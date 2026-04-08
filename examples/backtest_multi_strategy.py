@@ -29,6 +29,6 @@ for strategy in strategies:
     result = engine.run()
 
     print(f"  {strategy.name:<25} {result.total_return:>10.2%} {result.num_trades:>8d} "
-          f"{result.win_rate:>10.2%} {result.sharpe_ratio:>8.2f} {result.max_drawdown:>10.2%}")
+          f"{result.win_rate:>10.2%} {result.sharpe_ratio():>8.2f} {result.max_drawdown:>10.2%}")
 
 print("=" * 80 + "\n")

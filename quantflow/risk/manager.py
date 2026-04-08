@@ -22,14 +22,22 @@ class RiskManager:
     take_profit_pct: float = 0.15        # default take profit
     _halted: bool = field(default=False, init=False)
 
-    def check(self, signal: Signal, current_price: float, capital: float,
+    def check(self, signal: Signal, current_price: float, equity: float,
               equity_peak: float, open_position_count: int) -> Signal:
-        """Validate and potentially modify a signal based on risk rules."""
+        """Validate and potentially modify a signal based on risk rules.
+
+        Args:
+            signal: The trading signal to validate.
+            current_price: Current market price of the asset.
+            equity: Total portfolio equity (cash + position market values).
+            equity_peak: Highest equity value seen so far.
+            open_position_count: Number of currently open positions.
+        """
         if signal.type == SignalType.HOLD:
             return signal
 
-        # Drawdown check
-        if capital < equity_peak * (1 - self.max_drawdown_pct):
+        # Drawdown check — uses total equity, not just cash
+        if equity < equity_peak * (1 - self.max_drawdown_pct):
             if not self._halted:
                 logger.warning("Max drawdown breached (%.1f%%). Trading halted.",
                                self.max_drawdown_pct * 100)
@@ -44,8 +52,8 @@ class RiskManager:
             logger.info("Max open positions reached (%d). Skipping buy.", self.max_open_positions)
             return Signal(SignalType.HOLD)
 
-        # Position sizing — cap to max_position_pct of capital
-        max_value = capital * self.max_position_pct
+        # Position sizing — cap to max_position_pct of equity
+        max_value = equity * self.max_position_pct
         max_size = max_value / current_price if current_price > 0 else 0
         if signal.size and signal.size * current_price > max_value:
             signal.size = int(max_size)

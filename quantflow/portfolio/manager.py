@@ -21,6 +21,7 @@ class Portfolio:
     initial_capital: float = 100000.0
     commission_rate: float = 0.001
     slippage_rate: float = 0.0005
+    short_margin_rate: float = 1.0  # margin required for short positions (100% of value)
 
     cash: float = field(init=False)
     equity_peak: float = field(init=False)
@@ -35,7 +36,15 @@ class Portfolio:
 
     @property
     def equity(self) -> float:
-        return self.cash + sum(p.market_value for p in self.positions.values())
+        """Total equity = cash + market value of all positions (using current prices)."""
+        pos_value = 0.0
+        for p in self.positions.values():
+            if p.side == OrderSide.BUY:
+                pos_value += p.market_value
+            else:
+                # Short position: value = entry proceeds + unrealized PnL
+                pos_value += p.cost_basis + p.unrealized_pnl()
+        return self.cash + pos_value
 
     @property
     def open_position_count(self) -> int:
@@ -43,6 +52,11 @@ class Portfolio:
 
     def has_position(self, symbol: str) -> bool:
         return symbol in self.positions
+
+    def update_market_prices(self, symbol: str, current_price: float) -> None:
+        """Update current market price for a position."""
+        if symbol in self.positions:
+            self.positions[symbol].current_price = current_price
 
     def execute_signal(self, signal: Signal, symbol: str, current_price: float, timestamp: datetime) -> Optional[Order]:
         """Convert a signal into an order and execute it."""
@@ -68,10 +82,17 @@ class Portfolio:
                (pos.side == OrderSide.SELL and side == OrderSide.BUY):
                 return self._close_position(symbol, fill_price, timestamp, commission)
 
-        # Open new position
+        # Cash check for opening new positions
         if side == OrderSide.BUY and cost > self.cash:
             logger.info("Insufficient cash for buy: need %.2f, have %.2f", cost, self.cash)
             return None
+
+        if side == OrderSide.SELL:
+            # Short selling requires margin collateral
+            margin_required = fill_price * quantity * self.short_margin_rate + commission
+            if margin_required > self.cash:
+                logger.info("Insufficient margin for short: need %.2f, have %.2f", margin_required, self.cash)
+                return None
 
         order = Order(
             id=str(uuid.uuid4())[:8],
@@ -96,6 +117,7 @@ class Portfolio:
             quantity=quantity,
             entry_price=fill_price,
             entry_time=timestamp,
+            current_price=fill_price,
             stop_loss=signal.stop_loss,
             take_profit=signal.take_profit,
         )
@@ -123,7 +145,7 @@ class Portfolio:
             self.cash += exit_price * pos.quantity - commission
         else:
             pnl = (pos.entry_price - exit_price) * pos.quantity - commission
-            self.cash += pos.market_value + pnl
+            self.cash += pos.cost_basis + pnl
 
         order = Order(
             id=str(uuid.uuid4())[:8],
@@ -144,6 +166,9 @@ class Portfolio:
         """Check and trigger stop loss / take profit for a position."""
         if symbol not in self.positions:
             return None
+
+        # Update current market price
+        self.positions[symbol].current_price = current_price
         pos = self.positions[symbol]
 
         triggered = False

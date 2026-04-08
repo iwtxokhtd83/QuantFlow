@@ -35,9 +35,14 @@ class EMA:
     period: int = 20
 
     def calculate(self, prices: np.ndarray) -> Optional[float]:
+        """Calculate the latest EMA value efficiently without building full series."""
         if len(prices) < self.period:
             return None
-        return float(self.series(prices)[-1])
+        alpha = 2.0 / (self.period + 1)
+        ema = float(np.mean(prices[:self.period]))
+        for i in range(self.period, len(prices)):
+            ema = alpha * prices[i] + (1 - alpha) * ema
+        return ema
 
     def series(self, prices: np.ndarray) -> np.ndarray:
         alpha = 2.0 / (self.period + 1)
@@ -59,7 +64,11 @@ class MACD:
         if len(prices) < self.slow_period + self.signal_period:
             return None, None, None
         macd_line, signal_line, histogram = self.series(prices)
-        return float(macd_line[-1]), float(signal_line[-1]), float(histogram[-1])
+        m, s, h = macd_line[-1], signal_line[-1], histogram[-1]
+        # Guard against NaN leaking to downstream strategies
+        if np.isnan(m) or np.isnan(s) or np.isnan(h):
+            return None, None, None
+        return float(m), float(s), float(h)
 
     def series(self, prices: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         fast_ema = EMA(self.fast_period).series(prices)
@@ -168,11 +177,13 @@ class Stochastic:
             hh = np.max(high[i - self.k_period + 1: i + 1])
             ll = np.min(low[i - self.k_period + 1: i + 1])
             k[i] = 100 * (close[i] - ll) / (hh - ll) if hh != ll else 50.0
-        d = SMA(self.d_period).series(k[~np.isnan(k)])
-        d_full = np.full(n, np.nan)
-        valid_idx = np.where(~np.isnan(k))[0]
-        d_full[valid_idx[:len(d)]] = d
-        return k, d_full
+        # %D is a simple moving average of %K, computed in-place with proper alignment
+        d = np.full(n, np.nan)
+        for i in range(self.k_period - 1 + self.d_period - 1, n):
+            window = k[i - self.d_period + 1: i + 1]
+            if not np.any(np.isnan(window)):
+                d[i] = np.mean(window)
+        return k, d
 
 
 @dataclass

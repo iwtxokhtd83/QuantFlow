@@ -51,8 +51,13 @@ class PerformanceReport:
         drawdown = (self.equity_curve - peak) / peak
         return float(np.min(drawdown))
 
-    @property
     def sharpe_ratio(self, risk_free_rate: float = 0.0, periods: int = 252) -> float:
+        """Calculate annualized Sharpe ratio.
+
+        Args:
+            risk_free_rate: Annual risk-free rate (e.g., 0.02 for 2%).
+            periods: Number of trading periods per year (252 for daily).
+        """
         if len(self.equity_curve) < 2:
             return 0.0
         returns = np.diff(self.equity_curve) / self.equity_curve[:-1]
@@ -61,8 +66,13 @@ class PerformanceReport:
             return 0.0
         return float(np.mean(excess) / np.std(excess) * np.sqrt(periods))
 
-    @property
     def sortino_ratio(self, risk_free_rate: float = 0.0, periods: int = 252) -> float:
+        """Calculate annualized Sortino ratio (downside deviation only).
+
+        Args:
+            risk_free_rate: Annual risk-free rate (e.g., 0.02 for 2%).
+            periods: Number of trading periods per year (252 for daily).
+        """
         if len(self.equity_curve) < 2:
             return 0.0
         returns = np.diff(self.equity_curve) / self.equity_curve[:-1]
@@ -120,8 +130,8 @@ class PerformanceReport:
         print(f"  Avg Win:              ${self.avg_win:>14,.2f}")
         print(f"  Avg Loss:             ${self.avg_loss:>14,.2f}")
         print("-" * 60)
-        print(f"  Sharpe Ratio:         {self.sharpe_ratio:>14.2f}")
-        print(f"  Sortino Ratio:        {self.sortino_ratio:>14.2f}")
+        print(f"  Sharpe Ratio:         {self.sharpe_ratio():>14.2f}")
+        print(f"  Sortino Ratio:        {self.sortino_ratio():>14.2f}")
         print(f"  Max Drawdown:         {self.max_drawdown:>14.2%}")
         print(f"  Max Consec. Wins:     {self.max_consecutive_wins:>14d}")
         print(f"  Max Consec. Losses:   {self.max_consecutive_losses:>14d}")

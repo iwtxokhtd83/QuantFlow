@@ -116,14 +116,24 @@ class Position:
     quantity: float
     entry_price: float
     entry_time: datetime
+    current_price: float = 0.0
     stop_loss: Optional[float] = None
     take_profit: Optional[float] = None
 
+    def __post_init__(self) -> None:
+        if self.current_price == 0.0:
+            self.current_price = self.entry_price
+
     @property
     def market_value(self) -> float:
+        return self.quantity * self.current_price
+
+    @property
+    def cost_basis(self) -> float:
         return self.quantity * self.entry_price
 
-    def unrealized_pnl(self, current_price: float) -> float:
+    def unrealized_pnl(self, current_price: float = None) -> float:
+        price = current_price if current_price is not None else self.current_price
         if self.side == OrderSide.BUY:
-            return (current_price - self.entry_price) * self.quantity
-        return (self.entry_price - current_price) * self.quantity
+            return (price - self.entry_price) * self.quantity
+        return (self.entry_price - price) * self.quantity

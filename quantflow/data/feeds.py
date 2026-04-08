@@ -23,11 +23,14 @@ class DataFeed(ABC):
         """Load raw OHLCV data into a DataFrame."""
 
     def bars(self, symbol: str = "UNKNOWN") -> Iterator[Bar]:
-        """Yield Bar objects with rolling close price history."""
+        """Yield Bar objects with rolling close price history.
+
+        Uses pre-allocated numpy array slicing instead of creating new arrays
+        per bar, avoiding O(n²) memory allocation.
+        """
         df = self.load()
-        closes = []
-        for _, row in df.iterrows():
-            closes.append(row["close"])
+        all_closes = df["close"].values.astype(np.float64)
+        for i, (_, row) in enumerate(df.iterrows()):
             yield Bar(
                 symbol=symbol,
                 timestamp=row.name if isinstance(row.name, pd.Timestamp) else pd.Timestamp(row.get("date", row.name)),
@@ -36,7 +39,7 @@ class DataFeed(ABC):
                 low=float(row["low"]),
                 close=float(row["close"]),
                 volume=float(row.get("volume", 0)),
-                close_prices=np.array(closes, dtype=np.float64),
+                close_prices=all_closes[:i + 1],
             )
 
 

@@ -103,6 +103,21 @@ cp config/default.yaml config/local.yaml
 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a PR.
 
+## Changelog
+
+### v0.2.0 (2026-04-08)
+
+Bug fixes and accuracy improvements:
+
+- Fixed `sharpe_ratio()` and `sortino_ratio()` — now callable methods with customizable `risk_free_rate` and `periods` parameters (previously `@property` silently ignored arguments)
+- Fixed drawdown calculation — risk manager now uses total portfolio equity instead of cash only, preventing false drawdown triggers when positions are open
+- Fixed `Portfolio.equity` — now reflects current market prices instead of entry cost basis
+- Added short selling margin check — short positions now require cash collateral
+- Optimized `DataFeed.bars()` — uses pre-allocated numpy array slicing instead of O(n²) per-bar array creation
+- Optimized `EMA.calculate()` — computes final value directly instead of rebuilding the full series
+- Fixed Stochastic %D alignment — %D line now correctly aligns with %K using in-place SMA
+- Fixed `MACD.calculate()` — returns `None` instead of `NaN` when signal line has insufficient data
+
 ## Disclaimer
 
 This software is for educational and research purposes only. Do not use it for actual trading without understanding the risks. The authors are not responsible for any financial losses.

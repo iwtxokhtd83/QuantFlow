@@ -44,17 +44,18 @@ class BacktestEngine:
             bar_count += 1
             event_bus.publish(Event(EventType.BAR, data=bar))
 
-            # Check stop loss / take profit on existing positions
+            # Update market prices and check stops
+            portfolio.update_market_prices(bar.symbol, bar.close)
             portfolio.check_stops(bar.symbol, bar.close, bar.timestamp)
 
             # Get strategy signal
             signal = self.strategy.on_bar(bar, portfolio)
 
-            # Risk check
+            # Risk check — uses total equity for drawdown calculation
             signal = self.risk_manager.check(
                 signal=signal,
                 current_price=bar.close,
-                capital=portfolio.cash,
+                equity=portfolio.equity,
                 equity_peak=portfolio.equity_peak,
                 open_position_count=portfolio.open_position_count,
             )

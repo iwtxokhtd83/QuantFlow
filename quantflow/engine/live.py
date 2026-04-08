@@ -64,13 +64,14 @@ class LiveEngine:
                 )
 
                 event_bus.publish(Event(EventType.BAR, data=bar))
+                portfolio.update_market_prices(bar.symbol, bar.close)
                 portfolio.check_stops(bar.symbol, bar.close, bar.timestamp)
 
                 signal = self.strategy.on_bar(bar, portfolio)
                 signal = self.risk_manager.check(
                     signal=signal,
                     current_price=bar.close,
-                    capital=portfolio.cash,
+                    equity=portfolio.equity,
                     equity_peak=portfolio.equity_peak,
                     open_position_count=portfolio.open_position_count,
                 )
