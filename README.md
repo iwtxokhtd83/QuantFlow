@@ -99,11 +99,25 @@ Copy and edit the config template:
 cp config/default.yaml config/local.yaml
 ```
 
+## Testing
+
+```bash
+pip install pytest
+python -m pytest tests/ -v
+```
+
+89 tests covering indicators, risk management, portfolio execution, strategies, and engine integration.
+
 ## Contributing
 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a PR.
 
 ## Changelog
+
+### v0.3.0 (2026-04-09)
+
+- Added comprehensive test suite — 89 tests covering indicators, risk management, portfolio execution, strategies, and backtest engine integration
+- Tests for edge cases: empty data, single bar, zero volume, zero price, insufficient data warm-up
 
 ### v0.2.0 (2026-04-08)
 
